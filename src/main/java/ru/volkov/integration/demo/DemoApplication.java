@@ -15,13 +15,17 @@ import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.MessageBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+
 @SpringBootApplication
 @Configuration
 @EnableIntegration
 public class DemoApplication implements ApplicationRunner {
 
     @Autowired
-    private DirectChannel inputChannel;
+    private PrinterGateway gateway;
 
     public static void main(String[] args) {
         SpringApplication.run(DemoApplication.class, args);
@@ -29,15 +33,20 @@ public class DemoApplication implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        List<Future<Message<String>>> futures = new ArrayList<>();
 
-        Message<String> message = MessageBuilder
-                .withPayload("Hello world from builder pattern!")
-                .setHeader("newHeader", "newHeaderValue")
-                .build();
+        for (int i = 0; i < 10; i++) {
+            Message<String> message = MessageBuilder
+                    .withPayload("Printing message payload for - '{" + i + "}'")
+                    .setHeader("messageNumber", i)
+                    .build();
 
-        MessagingTemplate template = new MessagingTemplate();
-        Message returnMessage = template.sendAndReceive(inputChannel, message);
-        System.out.println(returnMessage.getPayload());
+            System.out.println("Sending message - '{" + i + "}'");
+            futures.add(this.gateway.print(message));
+        }
 
+        for (Future<Message<String>> future : futures) {
+            System.out.println(future.get().getPayload());
+        }
     }
 }
